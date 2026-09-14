@@ -1,0 +1,23 @@
+name: Test Homebrew formula
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'Formula/**'
+      - '.github/workflows/test.yml'
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install formula
+        env:
+          HOMEBREW_NO_INSTALL_FROM_API: '1'
+        run: brew install --formula ./Formula/console2svg.rb
+
+      - name: Run formula test
+        run: brew test console2svg
