@@ -1,0 +1,118 @@
+name: Sync latest console2svg release
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 * * * *'
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read latest stable release
+        id: release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          release=$(curl -fsSL \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            https://api.github.com/repos/arika0093/console2svg/releases/latest)
+
+          tag=$(jq -r '.tag_name' <<<"$release")
+          version=${tag#v}
+
+          asset_value() {
+            local name=$1 field=$2
+            jq -r --arg name "$name" --arg field "$field" \
+              '.assets[] | select(.name == $name) | .[$field] // empty' <<<"$release"
+          }
+
+          arm_url=$(asset_value console2svg-osx-arm64.tar.gz browser_download_url)
+          intel_url=$(asset_value console2svg-osx-x64.tar.gz browser_download_url)
+          arm_digest=$(asset_value console2svg-osx-arm64.tar.gz digest)
+          intel_digest=$(asset_value console2svg-osx-x64.tar.gz digest)
+
+          test -n "$arm_url"
+          test -n "$intel_url"
+
+          checksum() {
+            local url=$1 digest=$2
+            if [[ "$digest" == sha256:* ]]; then
+              printf '%s\n' "${digest#sha256:}"
+            else
+              curl -fsSL "$url" | sha256sum | awk '{print $1}'
+            fi
+          }
+
+          {
+            echo "tag=$tag"
+            echo "version=$version"
+            echo "arm_url=$arm_url"
+            echo "intel_url=$intel_url"
+            echo "arm_sha=$(checksum "$arm_url" "$arm_digest")"
+            echo "intel_sha=$(checksum "$intel_url" "$intel_digest")"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Update formula
+        env:
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+          RELEASE_VERSION: ${{ steps.release.outputs.version }}
+          ARM_URL: ${{ steps.release.outputs.arm_url }}
+          INTEL_URL: ${{ steps.release.outputs.intel_url }}
+          ARM_SHA: ${{ steps.release.outputs.arm_sha }}
+          INTEL_SHA: ${{ steps.release.outputs.intel_sha }}
+        run: |
+          python3 - <<'PY'
+          import os
+          import re
+          from pathlib import Path
+
+          path = Path("Formula/console2svg.rb")
+          text = path.read_text()
+          text = re.sub(
+              r'  version "[^"]+"',
+              f'  version "{os.environ["RELEASE_VERSION"]}"',
+              text,
+              count=1,
+          )
+          text = re.sub(
+              r'(  on_arm do\n    url ")[^"]+("\n    sha256 ")[^"]+("\n  end)',
+              lambda m: m.group(1) + os.environ["ARM_URL"] + m.group(2) + os.environ["ARM_SHA"] + m.group(3),
+              text,
+              count=1,
+          )
+          text = re.sub(
+              r'(  on_intel do\n    url ")[^"]+("\n    sha256 ")[^"]+("\n  end)',
+              lambda m: m.group(1) + os.environ["INTEL_URL"] + m.group(2) + os.environ["INTEL_SHA"] + m.group(3),
+              text,
+              count=1,
+          )
+          path.write_text(text)
+          PY
+
+      - name: Commit changes
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "$(date -u +%d)" == "01" ]]; then
+            date -u +%Y-%m > .sync-heartbeat
+          fi
+
+          git add Formula/console2svg.rb .sync-heartbeat 2>/dev/null || git add Formula/console2svg.rb
+          if git diff --cached --quiet; then
+            echo "Formula is already current."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "chore: sync console2svg ${{ steps.release.outputs.version }}"
+          git push
