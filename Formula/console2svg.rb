@@ -37,6 +37,9 @@ class Console2svg < Formula
   end
 
   test do
-    assert_match "console2svg", shell_output("#{bin}/console2svg --help")
+    output = testpath/"output.svg"
+    system bin/"console2svg", "capture", "-o", output, "--", "/usr/bin/printf", "hello"
+    assert_path_exists output
+    assert_match "hello", output.read
   end
 end
