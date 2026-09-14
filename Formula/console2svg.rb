@@ -4,20 +4,33 @@ class Console2svg < Formula
   version "0.9.3"
   license "Apache-2.0"
 
-  depends_on :macos
+  on_macos do
+    on_arm do
+      url "https://github.com/arika0093/console2svg/releases/download/v0.9.3/console2svg-osx-arm64.tar.gz"
+      sha256 "e56d5e86e2d66c19264719eb845027bfa06d84973bdfacac1e4569d2f50146ff"
+    end
 
-  on_arm do
-    url "https://github.com/arika0093/console2svg/releases/download/v0.9.3/console2svg-osx-arm64.tar.gz"
-    sha256 "e56d5e86e2d66c19264719eb845027bfa06d84973bdfacac1e4569d2f50146ff"
+    on_intel do
+      url "https://github.com/arika0093/console2svg/releases/download/v0.9.3/console2svg-osx-x64.tar.gz"
+      sha256 "bbb2045f42bd3a83e68b7db233e65abf751ef932dd6cb3fa6a3061ba27c64b66"
+    end
   end
 
-  on_intel do
-    url "https://github.com/arika0093/console2svg/releases/download/v0.9.3/console2svg-osx-x64.tar.gz"
-    sha256 "bbb2045f42bd3a83e68b7db233e65abf751ef932dd6cb3fa6a3061ba27c64b66"
+  on_linux do
+    on_arm do
+      url "https://github.com/arika0093/console2svg/releases/download/v0.9.3/console2svg-linux-arm64.tar.gz"
+      sha256 "2f5aa1d44ae8ac40a2585a6b4d53a5bc9b0dcd060f8973b8d82354e6fc4caaa9"
+    end
+
+    on_intel do
+      url "https://github.com/arika0093/console2svg/releases/download/v0.9.3/console2svg-linux-x64.tar.gz"
+      sha256 "41282243aa2a21a65c1e035f0159665f499e49b7f64c98c5609f136ead6df5e8"
+    end
   end
 
   def install
-    libexec.install "console2svg", "libconsole2svg_resvg.dylib"
+    native_library = OS.mac? ? "libconsole2svg_resvg.dylib" : "libconsole2svg_resvg.so"
+    libexec.install "console2svg", native_library
 
     (bin/"console2svg").write <<~SH
       #!/bin/bash
