@@ -30,20 +30,7 @@ jobs:
 
           tag=$(jq -r '.tag_name' <<<"$release")
           version=${tag#v}
-
-          asset_value() {
-            local name=$1 field=$2
-            jq -r --arg name "$name" --arg field "$field" \
-              '.assets[] | select(.name == $name) | .[$field] // empty' <<<"$release"
-          }
-
-          arm_url=$(asset_value console2svg-osx-arm64.tar.gz browser_download_url)
-          intel_url=$(asset_value console2svg-osx-x64.tar.gz browser_download_url)
-          arm_digest=$(asset_value console2svg-osx-arm64.tar.gz digest)
-          intel_digest=$(asset_value console2svg-osx-x64.tar.gz digest)
-
-          test -n "$arm_url"
-          test -n "$intel_url"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
 
           checksum() {
             local url=$1 digest=$2
@@ -54,23 +41,32 @@ jobs:
             fi
           }
 
-          {
-            echo "tag=$tag"
-            echo "version=$version"
-            echo "arm_url=$arm_url"
-            echo "intel_url=$intel_url"
-            echo "arm_sha=$(checksum "$arm_url" "$arm_digest")"
-            echo "intel_sha=$(checksum "$intel_url" "$intel_digest")"
-          } >> "$GITHUB_OUTPUT"
+          emit_asset() {
+            local name=$1 prefix=$2 url digest sha
+            url=$(jq -r --arg name "$name" '.assets[] | select(.name == $name) | .browser_download_url // empty' <<<"$release")
+            digest=$(jq -r --arg name "$name" '.assets[] | select(.name == $name) | .digest // empty' <<<"$release")
+            test -n "$url"
+            sha=$(checksum "$url" "$digest")
+            echo "${prefix}_url=$url" >> "$GITHUB_OUTPUT"
+            echo "${prefix}_sha=$sha" >> "$GITHUB_OUTPUT"
+          }
+
+          emit_asset console2svg-osx-arm64.tar.gz mac_arm
+          emit_asset console2svg-osx-x64.tar.gz mac_intel
+          emit_asset console2svg-linux-arm64.tar.gz linux_arm
+          emit_asset console2svg-linux-x64.tar.gz linux_intel
 
       - name: Update formula
         env:
-          RELEASE_TAG: ${{ steps.release.outputs.tag }}
           RELEASE_VERSION: ${{ steps.release.outputs.version }}
-          ARM_URL: ${{ steps.release.outputs.arm_url }}
-          INTEL_URL: ${{ steps.release.outputs.intel_url }}
-          ARM_SHA: ${{ steps.release.outputs.arm_sha }}
-          INTEL_SHA: ${{ steps.release.outputs.intel_sha }}
+          MAC_ARM_URL: ${{ steps.release.outputs.mac_arm_url }}
+          MAC_ARM_SHA: ${{ steps.release.outputs.mac_arm_sha }}
+          MAC_INTEL_URL: ${{ steps.release.outputs.mac_intel_url }}
+          MAC_INTEL_SHA: ${{ steps.release.outputs.mac_intel_sha }}
+          LINUX_ARM_URL: ${{ steps.release.outputs.linux_arm_url }}
+          LINUX_ARM_SHA: ${{ steps.release.outputs.linux_arm_sha }}
+          LINUX_INTEL_URL: ${{ steps.release.outputs.linux_intel_url }}
+          LINUX_INTEL_SHA: ${{ steps.release.outputs.linux_intel_sha }}
         run: |
           python3 - <<'PY'
           import os
@@ -85,18 +81,22 @@ jobs:
               text,
               count=1,
           )
-          text = re.sub(
-              r'(  on_arm do\n    url ")[^"]+("\n    sha256 ")[^"]+("\n  end)',
-              lambda m: m.group(1) + os.environ["ARM_URL"] + m.group(2) + os.environ["ARM_SHA"] + m.group(3),
-              text,
-              count=1,
+
+          assets = (
+              ("osx-arm64", "MAC_ARM_URL", "MAC_ARM_SHA"),
+              ("osx-x64", "MAC_INTEL_URL", "MAC_INTEL_SHA"),
+              ("linux-arm64", "LINUX_ARM_URL", "LINUX_ARM_SHA"),
+              ("linux-x64", "LINUX_INTEL_URL", "LINUX_INTEL_SHA"),
           )
-          text = re.sub(
-              r'(  on_intel do\n    url ")[^"]+("\n    sha256 ")[^"]+("\n  end)',
-              lambda m: m.group(1) + os.environ["INTEL_URL"] + m.group(2) + os.environ["INTEL_SHA"] + m.group(3),
-              text,
-              count=1,
-          )
+          for suffix, url_key, sha_key in assets:
+              pattern = rf'(\s+url ")[^"]*console2svg-{re.escape(suffix)}\.tar\.gz("\n\s+sha256 ")[^"]+("\n)'
+              replacement = (
+                  rf'\g<1>{os.environ[url_key]}\g<2>{os.environ[sha_key]}\g<3>'
+              )
+              text, count = re.subn(pattern, replacement, text, count=1)
+              if count != 1:
+                  raise SystemExit(f"failed to update {suffix} formula entry")
+
           path.write_text(text)
           PY
 
