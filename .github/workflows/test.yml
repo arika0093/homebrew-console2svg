@@ -10,8 +10,18 @@ on:
 
 jobs:
   test:
-    runs-on: macos-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
     steps:
+      - name: Set up Homebrew
+        uses: Homebrew/actions/setup-homebrew@f8d4222eb633e65c2a0157383cf80861fc7fae7f
+        with:
+          core: false
+          cask: false
+
       - name: Install from tap
         run: brew install arika0093/console2svg/console2svg
 
