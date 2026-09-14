@@ -12,12 +12,8 @@ jobs:
   test:
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v6
-
-      - name: Install formula
-        env:
-          HOMEBREW_NO_INSTALL_FROM_API: '1'
-        run: brew install --formula ./Formula/console2svg.rb
+      - name: Install from tap
+        run: brew install arika0093/console2svg/console2svg
 
       - name: Run formula test
-        run: brew test console2svg
+        run: brew test arika0093/console2svg/console2svg
