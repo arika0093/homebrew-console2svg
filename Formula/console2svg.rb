@@ -1,30 +1,30 @@
 class Console2svg < Formula
   desc "Convert terminal output to SVG images"
   homepage "https://github.com/arika0093/console2svg"
-  version "0.9.3"
+  version "0.10.0"
   license "Apache-2.0"
 
   on_macos do
     on_arm do
-      url "https://github.com/arika0093/console2svg/releases/download/v0.9.3/console2svg-osx-arm64.tar.gz"
-      sha256 "e56d5e86e2d66c19264719eb845027bfa06d84973bdfacac1e4569d2f50146ff"
+      url "https://github.com/arika0093/console2svg/releases/download/v0.10.0/console2svg-osx-arm64.tar.gz"
+      sha256 "5a75f0ee9a9ceb25a2e3e77c468ebf03b2bd18f97f092aa67023ff2927241c8a"
     end
 
     on_intel do
-      url "https://github.com/arika0093/console2svg/releases/download/v0.9.3/console2svg-osx-x64.tar.gz"
-      sha256 "bbb2045f42bd3a83e68b7db233e65abf751ef932dd6cb3fa6a3061ba27c64b66"
+      url "https://github.com/arika0093/console2svg/releases/download/v0.10.0/console2svg-osx-x64.tar.gz"
+      sha256 "9fe0820211e1700945e0d02bb25d501fef7c02eccd5fad34ecc73192e5bebf99"
     end
   end
 
   on_linux do
     on_arm do
-      url "https://github.com/arika0093/console2svg/releases/download/v0.9.3/console2svg-linux-arm64.tar.gz"
-      sha256 "2f5aa1d44ae8ac40a2585a6b4d53a5bc9b0dcd060f8973b8d82354e6fc4caaa9"
+      url "https://github.com/arika0093/console2svg/releases/download/v0.10.0/console2svg-linux-arm64.tar.gz"
+      sha256 "15f716f53f9f9fefa924065b914f03bdf75d5fbab79887a96f5a35236fd33be2"
     end
 
     on_intel do
-      url "https://github.com/arika0093/console2svg/releases/download/v0.9.3/console2svg-linux-x64.tar.gz"
-      sha256 "41282243aa2a21a65c1e035f0159665f499e49b7f64c98c5609f136ead6df5e8"
+      url "https://github.com/arika0093/console2svg/releases/download/v0.10.0/console2svg-linux-x64.tar.gz"
+      sha256 "5b1cf28d0a86ad41dedfbc75d8f3cc6b0cfdc55feb8f9e658086a1e8e2d06be0"
     end
   end
 
